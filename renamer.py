@@ -44,6 +44,9 @@ def print_error(text):
 
 # 默认参数
 encodings_list = ['gbk', 'utf-8', 'utf-16']
+# 固定支持三种字幕格式
+
+subs_exts = ['srt', 'ass', 'vtt']
 default_conflict = 'skip'
 
 def robust_file_read(path):
@@ -58,6 +61,7 @@ def robust_file_read(path):
 
 def extract_text_from_sub(path):
     content = robust_file_read(path)
+    # 去掉时间戳、序号、HTML 标签
     content = re.sub(r"\d+:\d+:\d+[\.,]\d+ --> \d+:\d+:\d+[\.,]\d+", '', content)
     content = re.sub(r'^\d+\s*$', '', content, flags=re.M)
     content = re.sub(r'<[^>]+>', '', content)
@@ -114,7 +118,7 @@ def main(args):
     global encodings_list
     encodings_list = [e.strip() for e in args.encodings.split(',') if e.strip()]
 
-    print_header('Srt Wav Renamer 启动')
+    print_header('Srt to Wav Renamer 启动')
     print_info(f"项目作者: 北漠海")
     print_info(f"可用编码格式: {','.join(encodings_list)}")
     print_info(f"可用字幕格式: {','.join(subs_exts)}")
@@ -132,20 +136,17 @@ def main(args):
     srt_files = []
     for root, _, files in os.walk(srt_dir):
         for f in files:
-            if f.lower().rsplit('.',1)[-1] in subs_exts:
+            ext = f.lower().rsplit('.',1)[-1]
+            if ext in subs_exts:
                 srt_files.append(os.path.join(root, f))
     total = len(srt_files)
     digits = len(str(total))
 
-    results = {
-        'success': 0,
-        'skipped': defaultdict(list),
-        'failed': defaultdict(list)
-    }
+    results = {'success':0, 'skipped':defaultdict(list), 'failed':defaultdict(list)}
     metadata = defaultdict(list)
     matched_wavs, matched_subs = set(), set()
 
-    for idx, sub_path in enumerate(srt_files, start=1):
+    for idx, sub_path in enumerate(srt_files, 1):
         prefix = f"[{str(idx).zfill(digits)}/{total}] "
         filename = os.path.basename(sub_path)
         base = os.path.splitext(filename)[0]
@@ -157,8 +158,7 @@ def main(args):
             continue
 
         safe = get_valid_filename(text)
-
-        # 找 WAV
+        # 找对应 WAV
         wav_path = None; rel = None
         for wroot, _, wfiles in os.walk(wav_dir):
             if f"{base}.wav" in wfiles:
@@ -180,13 +180,13 @@ def main(args):
             print_warning(prefix + f"跳过冲突 {os.path.basename(dst)}")
             continue
 
-        # 后缀提示
+        # 冲突后缀提示
         suffix_note = None
-        if final != dst and args.conflict == 'suffix':
-            new_name = os.path.basename(final)
-            raw_suffix = new_name[len(safe):]
-            suffix_num = os.path.splitext(raw_suffix)[0]
-            suffix_note = f"（添加后缀{suffix_num}）"
+        if final != dst and args.conflict=='suffix':
+            newnm = os.path.basename(final)
+            raw = newnm[len(safe):]
+            num = os.path.splitext(raw)[0]
+            suffix_note = f"（添加后缀{num}）"
 
         try:
             if not args.dry_run:
@@ -244,23 +244,21 @@ def main(args):
                 lf.write('\n'.join(entries) + '\n')
             print_success(f"已写入列表: {lp}")
 
-    # 总结
     print_summary(total, results)
 
 
-if __name__ == '__main__':
+if __name__=='__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('-w','--wav_input',    default='input',           help='WAV 根目录')
-    p.add_argument('-s','--srt_input',    help='字幕根目录')
-    p.add_argument('-o','--output',       default='output',          help='输出根目录')
-    p.add_argument('-n','--speaker',      default='',                help='说话人')
-    p.add_argument('-l','--language',     default='JP',              help='语言代码')
-    p.add_argument('-a','--wav_action',   choices=['copy','move'],   default='copy',   help='复制或移动 WAV')
-    p.add_argument('-e','--extra_action', choices=['skip','move','delete'], default='skip', help='额外文件处理')
-    p.add_argument('-c','--conflict',     choices=['suffix','overwrite','skip'], default='skip', help='冲突策略')
-    p.add_argument('-i','--interactive',  action='store_true',       help='交互式冲突解决')
-    p.add_argument('-d','--dry_run',      action='store_true',       help='预览模式')
-    p.add_argument('-E','--encodings',    default='gbk,utf-8,utf-16', help='读取字幕文件的编码顺序')
-    p.add_argument('-t','--subs',         default='srt,ass,vtt',     help='支持字幕格式列表')
+    p.add_argument('-w','--wav_input',   default='input',   help='WAV 根目录')
+    p.add_argument('-s','--srt_input',   help='字幕根目录')
+    p.add_argument('-o','--output',      default='output',  help='输出根目录')
+    p.add_argument('-n','--speaker',     default='',        help='说话人')
+    p.add_argument('-l','--language',    default='JP',      help='语言代码')
+    p.add_argument('-a','--wav_action',  choices=['copy','move'], default='copy', help='复制或移动 WAV')
+    p.add_argument('-e','--extra_action', choices=['skip','move','delete'], default='skip', help='多余文件处理')
+    p.add_argument('-c','--conflict',    choices=['suffix','overwrite','skip'], default='skip', help='冲突策略')
+    p.add_argument('-i','--interactive', action='store_true', help='交互式冲突解决')
+    p.add_argument('-d','--dry_run',     action='store_true', help='预览模式')
+    p.add_argument('-E','--encodings',   default='gbk,utf-8,utf-16', help='字幕编码尝试顺序')
     args = p.parse_args()
     main(args)
