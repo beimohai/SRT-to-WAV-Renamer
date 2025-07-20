@@ -113,7 +113,6 @@ def print_summary(total, results):
 def main(args):
     global encodings_list
     encodings_list = [e.strip() for e in args.encodings.split(',') if e.strip()]
-    subs_exts = [e.strip().lower() for e in args.subs.split(',') if e.strip()]
 
     print_header('Srt Wav Renamer 启动')
     print_info(f"项目作者: 北漠海")
