@@ -1,2 +1,1 @@
-argparse
-logging
+# 本项目只使用 Python 标准库, 无需任何第三方依赖 (argparse / logging 均为内置模块)
